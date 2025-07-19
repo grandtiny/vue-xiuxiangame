@@ -1004,7 +1004,19 @@
                       :key="index"
                       @click="illustrationsInfo(k, index)"
                     >
-                      <tag :type="item.quality">
+                      <tag 
+                        :type="item.quality" 
+                        :class="{ 
+                          'not-collected': !isEquipmentCollected(item),
+                          'collected': isEquipmentCollected(item)
+                        }"
+                      >
+                        <template v-if="isEquipmentCollected(item)">
+                          <el-icon class="collected-icon"><Check /></el-icon>
+                        </template>
+                        <template v-else>
+                          <el-icon class="lock-icon"><Lock /></el-icon>
+                        </template>
                         {{ item.name }}
                       </tag>
                     </div>
@@ -1136,6 +1148,7 @@
     propItemNames,
     dropdownTypeObject
   } from '@/plugins/game'
+  import { Check, Lock } from '@element-plus/icons-vue'
 
   const store = useMainStore()
   const router = useRouter()
@@ -2026,7 +2039,11 @@
       if (player.value.inventory.length >= player.value.backpackCapacity)
         storyText.value = `当前装备背包容量已满, 该装备自动丢弃, 转生可增加背包容量`
       // 添加到背包
-      else player.value.inventory.push(item)
+      else {
+        player.value.inventory.push(item)
+        // 更新装备图鉴
+        updateEquipmentCollection(item)
+      }
       // 跳转背包相关页
       inventoryActive.value = 'equipment'
       equipmentActive.value = item.type
@@ -2171,6 +2188,10 @@
         newBieBox.value = false
         // 更新玩家装备
         player.value.inventory = newBieData.value
+        // 更新装备图鉴
+        newBieData.value.forEach(item => {
+          updateEquipmentCollection(item)
+        })
         // 清空
         newBieData.value = []
         // 修改礼包领取状态
@@ -2696,6 +2717,23 @@
       // 用户取消装备
     })
   }
+
+  // 检查装备是否已获得
+  const isEquipmentCollected = (item) => {
+    return player.value.equipmentCollection[item.type].includes(item.name)
+  }
+
+  // 更新装备图鉴记录
+  const updateEquipmentCollection = (item) => {
+    if (!player.value.equipmentCollection[item.type].includes(item.name)) {
+      player.value.equipmentCollection[item.type].push(item.name)
+      gameNotifys({
+        title: '图鉴提示',
+        message: `获得新装备：${item.name}，已加入图鉴！`,
+        type: 'success'
+      })
+    }
+  }
 </script>
 
 <style scoped>
@@ -2940,6 +2978,137 @@
 
   .inventory-header .el-button {
     margin-left: 8px;
+  }
+
+  .not-collected {
+    opacity: 0.35;
+    filter: grayscale(100%);
+    border: 1px dashed var(--el-border-color);
+    background-color: rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+
+  .not-collected:hover {
+    opacity: 0.6;
+    transform: scale(1.02);
+  }
+
+  .collected {
+    position: relative;
+    border: 1px solid var(--el-color-success);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+  }
+
+  .collected:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .collected-icon {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    background-color: var(--el-color-success);
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .lock-icon {
+    margin-right: 4px;
+    opacity: 0.5;
+    font-size: 14px;
+  }
+
+  .equipAll-item {
+    margin: 8px;
+    display: inline-block;
+  }
+
+  .equipAll-item .el-tag {
+    cursor: pointer;
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 4px;
+    margin: 0;
+  }
+
+  /* 为不同品质的装备添加特殊效果 */
+  .collected[type="danger"] {
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.2);
+  }
+
+  .collected[type="warning"] {
+    box-shadow: 0 2px 8px rgba(255, 186, 0, 0.2);
+  }
+
+  .collected[type="purple"] {
+    box-shadow: 0 2px 8px rgba(147, 0, 255, 0.2);
+  }
+
+  .collected[type="primary"] {
+    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+  }
+
+  .collected[type="success"] {
+    box-shadow: 0 2px 8px rgba(103, 194, 58, 0.2);
+  }
+
+  /* 添加装备品质对应的边框颜色 */
+  .collected[type="danger"] {
+    border-color: var(--el-color-danger);
+  }
+
+  .collected[type="warning"] {
+    border-color: var(--el-color-warning);
+  }
+
+  .collected[type="purple"] {
+    border-color: #9300ff;
+  }
+
+  .collected[type="primary"] {
+    border-color: var(--el-color-primary);
+  }
+
+  .collected[type="success"] {
+    border-color: var(--el-color-success);
+  }
+
+  /* 图鉴整体布局优化 */
+  .equipAll-content {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    min-height: 200px;
+  }
+
+  /* 添加鼠标悬停提示 */
+  .equipAll-item {
+    position: relative;
+  }
+
+  .equipAll-item::after {
+    content: attr(data-status);
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .equipAll-item:hover::after {
+    opacity: 1;
   }
 </style>
 

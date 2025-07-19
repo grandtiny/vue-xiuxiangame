@@ -65,6 +65,13 @@ export const useMainStore = defineStore('main', {
         monster: [],
         equipment: []
       },
+      // 装备图鉴记录
+      equipmentCollection: {
+        weapon: [],    // 记录已获得的神兵名称
+        armor: [],     // 记录已获得的护甲名称
+        accessory: [], // 记录已获得的灵宝名称
+        sutra: []      // 记录已获得的法器名称
+      },
       script: '',
       cultivation: 0,
       currentTitle: null,

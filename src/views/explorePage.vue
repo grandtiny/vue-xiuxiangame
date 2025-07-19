@@ -329,6 +329,11 @@
     } else {
       // 玩家获得道具
       player.value.inventory.push(equipItem)
+      // 更新装备图鉴
+      if (!player.value.equipmentCollection[equipItem.type].includes(equipItem.name)) {
+        player.value.equipmentCollection[equipItem.type].push(equipItem.name)
+        texts.value.push(`获得新装备：${equipItem.name}，已加入图鉴！`)
+      }
     }
     // 如果没有满级
     if (player.value.level < maxLv) {

@@ -159,7 +159,14 @@
         if (player.value.inventory.length >= player.value.backpackCapacity)
           texts.value.push(`当前装备背包容量已满, 该装备自动丢弃, 转生可增加背包容量`)
         // 玩家获得道具
-        else player.value.inventory.push(equipItem)
+        else {
+          player.value.inventory.push(equipItem)
+          // 更新装备图鉴
+          if (!player.value.equipmentCollection[equipItem.type].includes(equipItem.name)) {
+            player.value.equipmentCollection[equipItem.type].push(equipItem.name)
+            texts.value.push(`获得新装备：${equipItem.name}，已加入图鉴！`)
+          }
+        }
         // 增加悟性丹
         player.value.props.rootBone += 1
         // 获得悟性丹通知
