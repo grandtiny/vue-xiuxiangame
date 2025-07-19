@@ -259,6 +259,10 @@
               <el-tabs v-model="equipmentActive">
                 <el-tab-pane :label="i.name" :name="i.type" v-for="(i, k) in backPackItem" :key="k">
                   <div class="inventory-content">
+                    <div class="inventory-header">
+                      <el-button type="danger" size="small" @click="batchDecompose(i.type)">一键分解</el-button>
+                      <el-button type="primary" size="small" @click="autoEquipBest(i.type)">一键装备</el-button>
+                    </div>
                     <div v-if="player.inventory.length">
                       <template v-for="item in player.inventory" :key="item.id">
                         <el-popover placement="bottom" :title="item.name" :width="300" trigger="hover">
@@ -2054,7 +2058,7 @@
   const wifeRevoke = () => {
     const item = player.value.wife
     // 更新玩家属性，移除当前跟随道侣的属性加成
-    playerAttribute(-item.dodge, -item.attack, -item.health, -item.critical, -item.defense)
+    playerAttribute(-item.dodge, -item.attack, -itemInfo.health, -itemInfo.critical, -itemInfo.defense)
     // 收回当前跟随的道侣
     player.value.wife = {}
     player.value.wifes.push(item)
@@ -2578,6 +2582,120 @@
       dangerouslyUseHTMLString: true
     }).catch(() => {})
   }
+
+  // 一键分解指定类型的未装备和未锁定装备
+  const batchDecompose = (type) => {
+    // 获取指定类型的未锁定装备
+    const itemsToDecompose = player.value.inventory.filter(item => item.type === type && !item.lock)
+    
+    if (!itemsToDecompose.length) {
+      gameNotifys({
+        title: '装备分解提示',
+        message: '没有可分解的装备'
+      })
+      return
+    }
+
+    ElMessageBox.confirm(
+      `确定要分解所有未锁定的${genre[type]}吗？共 ${itemsToDecompose.length} 件装备`,
+      '批量分解确认',
+      {
+        confirmButtonText: '确定分解',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      let totalStones = 0
+      
+      itemsToDecompose.forEach(item => {
+        const stones = item.level + Math.floor((item.level * player.value.reincarnation) / 10)
+        totalStones += stones
+      })
+
+      // 增加炼器石数量
+      player.value.props.strengtheningStone += totalStones
+      
+      // 从背包中移除已分解的装备
+      player.value.inventory = player.value.inventory.filter(item => 
+        item.type !== type || item.lock
+      )
+
+      gameNotifys({
+        title: '装备批量分解成功',
+        message: `成功分解 ${itemsToDecompose.length} 件装备，获得 ${totalStones} 个炼器石`
+      })
+    }).catch(() => {
+      // 用户取消分解
+    })
+  }
+
+  // 一键装备最佳装备
+  const autoEquipBest = (type) => {
+    // 获取当前类型的所有未锁定装备
+    const availableEquipments = player.value.inventory.filter(item => item.type === type)
+    
+    if (!availableEquipments.length) {
+      gameNotifys({
+        title: '装备提示',
+        message: '没有可装备的' + genre[type]
+      })
+      return
+    }
+
+    // 获取符合等级要求的装备
+    const eligibleEquipments = availableEquipments.filter(item => {
+      // 如果已经转生，则不受等级限制
+      if (player.value.reincarnation) return true
+      // 否则检查装备等级是否符合要求
+      return item.level <= player.value.level
+    })
+
+    if (!eligibleEquipments.length) {
+      gameNotifys({
+        title: '装备提示',
+        message: '没有符合等级要求的' + genre[type]
+      })
+      return
+    }
+
+    // 按评分排序，找出评分最高的装备
+    const bestEquipment = eligibleEquipments.reduce((best, current) => {
+      return (current.score > best.score) ? current : best
+    }, eligibleEquipments[0])
+
+    // 如果已经装备了同类型的装备，先比较评分
+    if (JSON.stringify(player.value.equipment[type]) !== '{}') {
+      const currentEquipment = player.value.equipment[type]
+      if (currentEquipment.score >= bestEquipment.score) {
+        gameNotifys({
+          title: '装备提示',
+          message: `当前装备的${genre[type]}评分更高或相等，无需更换`
+        })
+        return
+      }
+    }
+
+    // 执行装备更换
+    ElMessageBox.confirm(
+      `是否装备 ${levels[bestEquipment.quality]}${bestEquipment.name}(评分:${bestEquipment.score})?`,
+      '装备确认',
+      {
+        confirmButtonText: '确定装备',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    ).then(() => {
+      // 调用现有的装备方法
+      equipItem(bestEquipment.id, type)
+      
+      gameNotifys({
+        title: '装备提示',
+        message: `成功装备 ${levels[bestEquipment.quality]}${bestEquipment.name}`
+      })
+    }).catch(() => {
+      // 用户取消装备
+    })
+  }
 </script>
 
 <style scoped>
@@ -2811,6 +2929,17 @@
     .backtop {
       display: flex;
     }
+  }
+
+  .inventory-header {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  .inventory-header .el-button {
+    margin-left: 8px;
   }
 </style>
 
